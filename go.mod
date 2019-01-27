@@ -1,3 +1,1 @@
-module MethodCallRetrier
-
-require github.com/stretchr/testify v1.3.0
+module github.com/j7mbo/MethodCallRetrier
