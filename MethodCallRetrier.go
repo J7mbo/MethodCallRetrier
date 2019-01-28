@@ -68,7 +68,7 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 	}
 
 	if errorFound == true {
-		r.sleepAndIncrementRetries(r.waitTime)
+		r.sleepAndIncrementRetries()
 
 		return r.ExecuteWithRetry(object, methodName, args...)
 	}
@@ -107,8 +107,10 @@ func (r *MethodCallRetrier) objectIsAPointer(object interface{}) bool {
 }
 
 /* Sleep for the given wait time and increment the retry count by 1. */
-func (r *MethodCallRetrier) sleepAndIncrementRetries(waitTime int64) {
-	time.Sleep(time.Duration(waitTime*r.exponent) * time.Second)
+func (r *MethodCallRetrier) sleepAndIncrementRetries() {
+	time.Sleep(time.Duration(r.waitTime) * time.Second)
+
+	r.waitTime *= r.exponent
 
 	r.currentRetries++
 }
