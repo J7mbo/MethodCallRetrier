@@ -1,3 +1,9 @@
+MethodCallRetrier
+-
+
+[![Build Status](https://travis-ci.org/J7mbo/MethodCallRetrier.svg?branch=master)](https://travis-ci.org/J7mbo/MethodCallRetrier)
+[![GoDoc](https://godoc.org/github.com/J7mbo/MethodCallRetrier?status.svg)](https://godoc.org/github.com/J7mbo/MethodCallRetrier)
+
 Features
 -
 
