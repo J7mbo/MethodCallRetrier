@@ -1,6 +1,7 @@
 package MethodCallRetrier
 
 import (
+	"math/rand"
 	"reflect"
 	"time"
 )
@@ -86,7 +87,7 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 func (r *MethodCallRetrier) callMethodOnObject(object interface{}, methodName string, args []interface{}) []reflect.Value {
 	var method reflect.Value
 
-	if r.objectIsAPointer(object) {
+	if objectIsAPointer(object) {
 		method = reflect.ValueOf(object).MethodByName(methodName)
 	} else {
 		method = reflect.New(reflect.TypeOf(object)).MethodByName(methodName)
@@ -101,14 +102,25 @@ func (r *MethodCallRetrier) callMethodOnObject(object interface{}, methodName st
 	return method.Call(arguments)
 }
 
+/* calculateJitter adds randomness to avoid deterministic algorithm causing retry collisions for multiple consumers. */
+func calculateJitter(waitTime time.Duration) time.Duration {
+	if int64(waitTime) == 0 {
+		return waitTime
+	}
+
+	jitter := time.Duration(rand.Int63n(int64(waitTime)))
+
+	return waitTime + jitter / 2
+}
+
 /* If it's a pointer, we need to call the concrete instead */
-func (r *MethodCallRetrier) objectIsAPointer(object interface{}) bool {
+func objectIsAPointer(object interface{}) bool {
 	return reflect.ValueOf(object).Kind() == reflect.Ptr
 }
 
 /* Sleep for the given wait time and increment the retry count by 1. */
 func (r *MethodCallRetrier) sleepAndIncrementRetries() {
-	time.Sleep(time.Duration(r.waitTime) * time.Second)
+    time.Sleep(calculateJitter(time.Duration(r.waitTime) * time.Second))
 
 	r.waitTime *= r.exponent
 
