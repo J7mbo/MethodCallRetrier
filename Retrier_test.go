@@ -103,6 +103,35 @@ func (s *RetrierTestSuite) TestRetrierWorksWhenMultipleReturnParamsAreErrors() {
 	s.Assert().Len(errs, 11)
 }
 
+func (s *RetrierTestSuite) TestRetrierWorksWithUserFunction() {
+	var num int
+
+	errs := New(0, 3, nil).ExecuteFuncWithRetry(func() error {
+		num = 42
+
+		return nil
+	})
+
+	s.Assert().Equal(42, num)
+	s.Assert().Len(errs, 0)
+}
+
+func (s *RetrierTestSuite) TestRetrierWithUserFunctionReturnsCorrectNumberOfErrors() {
+	errs := New(0, 3, nil).ExecuteFuncWithRetry(func() error {
+		return errors.New("")
+	})
+
+	s.Assert().Equal(4, len(errs))
+}
+
+func (s *RetrierTestSuite) TestRetrierWorksWithUserFunctionCalledCorrectNumberOfTimes() {
+	testObj := RetryMockObject{}
+
+	New(0, 3, nil).ExecuteFuncWithRetry(testObj.MethodToBeCalledToReturnResultAndError)
+
+	s.Assert().Equal(3, testObj.timesCalled)
+}
+
 type RetryObject struct{}
 
 func (m *RetryObject) MethodReturningNoValues() {}
@@ -125,8 +154,16 @@ func (m *RetryObject) MethodReturningMultipleErrors() (string, error, error) {
 
 type RetryMockObject struct {
 	mock.Mock
+
+	timesCalled int
 }
 
 func (m *RetryMockObject) MethodReturningError(anArgument string) error {
 	return m.Called(anArgument).Error(0)
+}
+
+func (m *RetryMockObject) MethodToBeCalledToReturnResultAndError() error {
+	m.timesCalled += 1
+
+	return errors.New("")
 }

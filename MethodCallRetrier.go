@@ -38,6 +38,41 @@ func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
 	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: *exponent}
 }
 
+/*
+Retries a function with a maximum number of retries and a wait time. Functionally equivalent to ExecuteWithRetry() but
+accepts a function to maintain type safety in userland instead and removes the requirement of a user type assertion.
+*/
+func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error {
+	defer func() {
+		r.resetCurrentRetries()
+		r.resetErrorList()
+	}()
+
+	if r.currentRetries >= r.maxRetries {
+		r.errorList = append(
+			r.errorList, &MaxRetriesError{
+				methodName: reflect.TypeOf(function).String(),
+				waitTime: r.waitTime,
+				maxRetries: r.maxRetries,
+			},
+		)
+
+		return r.errorList
+	}
+
+	err := function()
+
+	if err != nil {
+		r.errorList = append(r.errorList, err)
+
+		r.sleepAndIncrementRetries()
+
+		return r.ExecuteFuncWithRetry(function)
+	}
+
+	return r.errorList
+}
+
 /* Retries the call to object.methodName(...args) with a maximum number of retries and a wait time. */
 func (r *MethodCallRetrier) ExecuteWithRetry(
 	object interface{}, methodName string, args ...interface{},
