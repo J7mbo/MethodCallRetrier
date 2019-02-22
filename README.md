@@ -67,7 +67,7 @@ functionToRetry := func() error {
     return nil
 }
 
-if errs := retrier.ExecuteWithRetry(funcToRetry); len(errs) > 0 {
+if errs := retrier.ExecuteFuncWithRetry(funcToRetry); len(errs) > 0 {
     /* Do something because we failed 3 times */
     return
 }
