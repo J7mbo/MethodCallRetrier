@@ -37,6 +37,13 @@ func (s *RetrierTestSuite) TestRetrierWorksWithObject() {
 	s.Assert().EqualValues(results[0].String(), arg)
 }
 
+func (s *RetrierTestSuite) TestRetrierReturnsErrorOnInvalidMethod() {
+	results, errs := s.retrier.ExecuteWithRetry(RetryObject{}, "InvalidMethodName")
+
+	s.Assert().Nil(results)
+	s.Assert().Error(errs[0])
+}
+
 func (s *RetrierTestSuite) TestRetrierThrowsErrorReturnsNilResults() {
 	results, _ := s.retrier.ExecuteWithRetry(RetryObject{}, "MethodReturningError", "TestArg")
 
