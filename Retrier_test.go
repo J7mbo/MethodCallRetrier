@@ -81,6 +81,22 @@ func (s *RetrierTestSuite) TestRetrierRetriesCorrectNumberOfTimes() {
 	testObj.AssertExpectations(s.T())
 }
 
+func (s *RetrierTestSuite) TestRetrierWorksWithNegativeMaxRetries() {
+	arg := "testArg"
+
+	results, _ := New(-1, -1, nil).ExecuteWithRetry(RetryObject{}, "MethodReturningString", arg)
+
+	s.Assert().EqualValues(results[0].String(), arg)
+}
+
+func (s *RetrierTestSuite) TestRetrierDefaultsToOneRetryGivenZeroMaxRetries() {
+	testObj := RetryMockObject{}
+
+	New(0, 0, nil).ExecuteFuncWithRetry(testObj.MethodToBeCalledToReturnResultAndError)
+
+	s.Assert().Equal(1, testObj.timesCalled)
+}
+
 func (s *RetrierTestSuite) TestRetrierReturnsAllErrorsPlusOurError() {
 	testObj := RetryMockObject{}
 	methodName := "MethodReturningError"
@@ -96,7 +112,7 @@ func (s *RetrierTestSuite) TestRetrierWorksWhenErrorIsNotLastReturnParamOnObject
 	testObj := RetryObject{}
 	methodName := "MethodReturningErrorInRandomPosition"
 
-	_, errs := New(0, 5, nil).ExecuteWithRetry(&testObj, methodName, "")
+	_, errs := New(1, 1, nil).ExecuteWithRetry(&testObj, methodName, "")
 
 	s.Assert().IsType(errors.New(""), errs[0])
 }
@@ -137,6 +153,19 @@ func (s *RetrierTestSuite) TestRetrierWorksWithUserFunctionCalledCorrectNumberOf
 	New(0, 3, nil).ExecuteFuncWithRetry(testObj.MethodToBeCalledToReturnResultAndError)
 
 	s.Assert().Equal(3, testObj.timesCalled)
+}
+
+/* This really only exists for coverage */
+func (s *RetrierTestSuite) TestMaxRetriesError() {
+	methodName := "AMethod"
+	waitTime := "42"
+	maxRetries := "52"
+
+	err := MaxRetriesError{methodName: methodName, waitTime: 42, maxRetries: 52}
+
+	s.Assert().Contains(err.Error(), methodName)
+	s.Assert().Contains(err.Error(), waitTime)
+	s.Assert().Contains(err.Error(), maxRetries)
 }
 
 type RetryObject struct{}
