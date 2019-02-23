@@ -1,7 +1,8 @@
 language: go
 
 go:
-  - "1.11.x"
+  - 1.11.x
+  - tip
 
 os:
   - linux
@@ -12,6 +13,12 @@ dist: trusty
 sudo: false
 install: true
 
+before_install:
+  - go get -t -v ./...
+
 script:
   - env GO111MODULE=on go build
-  - env GO111MODULE=on go test
+  - env GO111MODULE=on go test -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

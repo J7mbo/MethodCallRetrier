@@ -33,8 +33,12 @@ func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
 		exponent = &defaultInt
 	}
 
-	if maxRetries <= 0 {
-		maxRetries = 0
+	if maxRetries < 1 {
+		maxRetries = 1
+	}
+
+	if waitTime <= 0 {
+		waitTime = 0
 	}
 
 	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: *exponent}
