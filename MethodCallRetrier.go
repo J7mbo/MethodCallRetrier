@@ -1,6 +1,8 @@
 package MethodCallRetrier
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"time"
@@ -90,7 +92,12 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 		return nil, r.errorList
 	}
 
-	returnValues := r.callMethodOnObject(object, methodName, args)
+	returnValues, err := r.callMethodOnObject(object, methodName, args)
+
+	if err != nil {
+		return nil, []error{err}
+	}
+
 	returnValueCount := len(returnValues)
 
 	errorFound := false
@@ -119,7 +126,11 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 }
 
 /* callMethodOnObject calls a method dynamically on an object with arguments. */
-func (r *MethodCallRetrier) callMethodOnObject(object interface{}, methodName string, args []interface{}) []reflect.Value {
+func (r *MethodCallRetrier) callMethodOnObject(
+	object interface{},
+	methodName string,
+	args []interface{},
+) ([]reflect.Value, error) {
 	var method reflect.Value
 
 	if objectIsAPointer(object) {
@@ -128,13 +139,19 @@ func (r *MethodCallRetrier) callMethodOnObject(object interface{}, methodName st
 		method = reflect.New(reflect.TypeOf(object)).MethodByName(methodName)
 	}
 
+	if !method.IsValid() {
+		return nil, errors.New(
+			fmt.Sprintf("method with name: '%s' does not exist on object: '%T'", methodName, object),
+		)
+	}
+
 	arguments := make([]reflect.Value, method.Type().NumIn())
 
 	for i := 0; i < method.Type().NumIn(); i++ {
 		arguments[i] = reflect.ValueOf(args[i])
 	}
 
-	return method.Call(arguments)
+	return method.Call(arguments), nil
 }
 
 /* calculateJitter adds randomness to avoid deterministic algorithm causing retry collisions for multiple consumers. */
