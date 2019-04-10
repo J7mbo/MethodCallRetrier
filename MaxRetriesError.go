@@ -1,15 +1,18 @@
 package MethodCallRetrier
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
-/* Custom error for differentiation. */
+/* MaxRetriesError is a custom error for differentiation. */
 type MaxRetriesError struct {
 	methodName string
-	waitTime   int64
+	waitTime   time.Duration
 	maxRetries int64
 }
 
-/* Create a new instance of MaxRetriesError. */
+/* Error is for implementing the error interface. */
 func (e *MaxRetriesError) Error() string {
 	return fmt.Sprintf(
 		"Tried calling: '%s' %d times but reached max retries of: %d", e.methodName, e.waitTime, e.maxRetries,

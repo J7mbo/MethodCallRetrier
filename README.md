@@ -23,7 +23,7 @@ Usage
 Initialise the object with some options:
 
 ```
-MethodCallRetrier.New(waitTime int64, maxRetries int64, exponent int64) 
+MethodCallRetrier.New(waitTime time.Duration, maxRetries int64, exponent int64) 
 ```
 
 Call `ExecuteWithRetry` with your object and method you want to retry:
