@@ -26,7 +26,7 @@ func (s *RetrierTestSuite) TestRetrierWorksWithPointer() {
 
 	results, _ := s.retrier.ExecuteWithRetry(&RetryObject{}, "MethodReturningString", arg)
 
-	s.Assert().EqualValues(results[0].String(), arg)
+	s.Assert().EqualValues(results[0], arg)
 }
 
 func (s *RetrierTestSuite) TestRetrierWorksWithObject() {
@@ -34,7 +34,7 @@ func (s *RetrierTestSuite) TestRetrierWorksWithObject() {
 
 	results, _ := s.retrier.ExecuteWithRetry(RetryObject{}, "MethodReturningString", arg)
 
-	s.Assert().EqualValues(results[0].String(), arg)
+	s.Assert().EqualValues(results[0], arg)
 }
 
 func (s *RetrierTestSuite) TestRetrierReturnsErrorOnInvalidMethod() {
@@ -86,7 +86,7 @@ func (s *RetrierTestSuite) TestRetrierWorksWithNegativeMaxRetries() {
 
 	results, _ := New(-1, -1, 1).ExecuteWithRetry(RetryObject{}, "MethodReturningString", arg)
 
-	s.Assert().EqualValues(results[0].String(), arg)
+	s.Assert().EqualValues(results[0], arg)
 }
 
 func (s *RetrierTestSuite) TestRetrierDefaultsToOneRetryGivenZeroMaxRetries() {

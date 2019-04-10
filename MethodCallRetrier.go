@@ -82,7 +82,7 @@ func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error 
 /* ExecuteWithRetry retries the call to object.methodName(...args) with a maximum number of retries and a wait time. */
 func (r *MethodCallRetrier) ExecuteWithRetry(
 	object interface{}, methodName string, args ...interface{},
-) ([]reflect.Value, []error) {
+) ([]interface{}, []error) {
 	defer func() {
 		r.resetCurrentRetries()
 		r.resetErrorList()
@@ -120,10 +120,11 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 		return r.ExecuteWithRetry(object, methodName, args...)
 	}
 
-	results := make([]reflect.Value, returnValueCount)
+	results := make([]interface{}, returnValueCount)
 
 	for i := range results {
-		results[i] = returnValues[i]
+		/* Convert from reflect.Value to a magical anything. */
+		results[i] = returnValues[i].Interface()
 	}
 
 	return results, nil
