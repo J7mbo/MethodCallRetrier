@@ -15,7 +15,7 @@ Extremely useful for retrying HTTP calls in distributed systems, or anything els
 Installation
 -
 
-`go get github.com/j7mbo/MethodCallRetrier`
+`go get github.com/j7mbo/MethodCallRetrier/v2`
 
 Usage
 -
@@ -23,7 +23,7 @@ Usage
 Initialise the object with some options:
 
 ```
-MethodCallRetrier.New(waitTime int64, maxRetries int64, exponent *int64) 
+MethodCallRetrier.New(waitTime int64, maxRetries int64, exponent int64) 
 ```
 
 Call `ExecuteWithRetry` with your object and method you want to retry:

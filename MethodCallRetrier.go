@@ -26,11 +26,10 @@ type MethodCallRetrier struct {
 	errorList []error
 }
 
-/* MethodCallRetrier.New returns a new MethodCallRetrier. */
-func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
-	if exponent == nil {
-		defaultInt := int64(1)
-		exponent = &defaultInt
+/* New returns a new MethodCallRetrier. */
+func New(waitTime int64, maxRetries int64, exponent int64) *MethodCallRetrier {
+	if exponent < 1 {
+		exponent = 1
 	}
 
 	if maxRetries < 1 {
@@ -41,12 +40,13 @@ func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
 		waitTime = 0
 	}
 
-	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: *exponent}
+	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: exponent}
 }
 
 /*
-Retries a function with a maximum number of retries and a wait time. Functionally equivalent to ExecuteWithRetry() but
-accepts a function to maintain type safety in userland instead and removes the requirement of a user type assertion.
+ExecuteFuncWithRetry retries a function with a maximum number of retries and a wait time. Functionally equivalent to
+ExecuteWithRetry() but accepts a function to maintain type safety in userland instead and removes the requirement of a
+user type assertion.
 */
 func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error {
 	defer func() {
