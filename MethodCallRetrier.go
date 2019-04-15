@@ -8,29 +8,28 @@ import (
 	"time"
 )
 
-/* Handles the retrying of a function call when an error is given up to X times - useful for http requests. */
+/* MethodCallRetrier handles the retrying of a function when an error is given up to X times - eg. for http requests. */
 type MethodCallRetrier struct {
-	/* Wait time in seconds between each unsuccessful call. */
-	waitTime int64
+	/* waitTime is the wait time in seconds between each unsuccessful call. */
+	waitTime time.Duration
 
-	/* Maximum number of retries to attempt before returning an error. */
+	/* maxRetries is the maximum number of retries to attempt before returning an error. */
 	maxRetries int64
 
-	/* Useful for incremental increases in the sleep time. Defaults to no exponent. */
+	/* exponent is useful for incremental increases in the sleep time. Defaults to no exponent increase. */
 	exponent int64
 
-	/* Store the current number of retries; is always reset after ExecuteWithRetry() has finished. */
+	/* currentRetries stores the current number of retries; is always reset after ExecuteWithRetry() has finished. */
 	currentRetries int64
 
-	/* Store the errors retrieved as they may be different on each subsequent retry. */
+	/* errorList stores the errors retrieved as they may be different on each subsequent retry. */
 	errorList []error
 }
 
-/* MethodCallRetrier.New returns a new MethodCallRetrier. */
-func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
-	if exponent == nil {
-		defaultInt := int64(1)
-		exponent = &defaultInt
+/* New returns a new MethodCallRetrier. */
+func New(waitTime time.Duration, maxRetries int64, exponent int64) *MethodCallRetrier {
+	if exponent < 1 {
+		exponent = 1
 	}
 
 	if maxRetries < 1 {
@@ -41,14 +40,15 @@ func New(waitTime int64, maxRetries int64, exponent *int64) *MethodCallRetrier {
 		waitTime = 0
 	}
 
-	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: *exponent}
+	return &MethodCallRetrier{waitTime: waitTime, maxRetries: maxRetries, exponent: exponent}
 }
 
 /*
-Retries a function with a maximum number of retries and a wait time. Functionally equivalent to ExecuteWithRetry() but
-accepts a function to maintain type safety in userland instead and removes the requirement of a user type assertion.
+ExecuteFuncWithRetry retries a function with a maximum number of retries and a wait time. Functionally equivalent to
+ExecuteWithRetry() but accepts a function to maintain type safety in userland instead and removes the requirement of a
+user type assertion.
 */
-func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error {
+func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) (errs []error, wasSuccessful bool) {
 	defer func() {
 		r.resetCurrentRetries()
 		r.resetErrorList()
@@ -63,7 +63,7 @@ func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error 
 			},
 		)
 
-		return r.errorList
+		return r.errorList, false
 	}
 
 	err := function()
@@ -76,13 +76,13 @@ func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error 
 		return r.ExecuteFuncWithRetry(function)
 	}
 
-	return r.errorList
+	return r.errorList, true
 }
 
-/* Retries the call to object.methodName(...args) with a maximum number of retries and a wait time. */
+/* ExecuteWithRetry retries the call to object.methodName(...args) with a maximum number of retries and a wait time. */
 func (r *MethodCallRetrier) ExecuteWithRetry(
 	object interface{}, methodName string, args ...interface{},
-) ([]reflect.Value, []error) {
+) ([]interface{}, []error, bool) {
 	defer func() {
 		r.resetCurrentRetries()
 		r.resetErrorList()
@@ -93,13 +93,13 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 			r.errorList, &MaxRetriesError{methodName: methodName, waitTime: r.waitTime, maxRetries: r.maxRetries},
 		)
 
-		return nil, r.errorList
+		return nil, r.errorList, false
 	}
 
 	returnValues, err := r.callMethodOnObject(object, methodName, args)
 
 	if err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	returnValueCount := len(returnValues)
@@ -120,16 +120,17 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 		return r.ExecuteWithRetry(object, methodName, args...)
 	}
 
-	results := make([]reflect.Value, returnValueCount)
+	results := make([]interface{}, returnValueCount)
 
 	for i := range results {
-		results[i] = returnValues[i]
+		/* Convert from reflect.Value to a magical anything. */
+		results[i] = returnValues[i].Interface()
 	}
 
-	return results, nil
+	return results, r.errorList, true
 }
 
-/* callMethodOnObject calls a method dynamically on an object with arguments. */
+/* callMethodOnObject calls a method dynamically on an object with arguments - error returned here is our fault. */
 func (r *MethodCallRetrier) callMethodOnObject(
 	object interface{},
 	methodName string,
@@ -169,26 +170,26 @@ func calculateJitter(waitTime time.Duration) time.Duration {
 	return waitTime + jitter / 2
 }
 
-/* If it's a pointer, we need to call the concrete instead */
+/* objectIsAPointer decides whether or not an object is a pointer and so we would need to call the concrete instead. */
 func objectIsAPointer(object interface{}) bool {
 	return reflect.ValueOf(object).Kind() == reflect.Ptr
 }
 
-/* Sleep for the given wait time and increment the retry count by 1. */
+/* sleepAndIncrementRetries sleeps for the given wait time and increments the retry count by 1. */
 func (r *MethodCallRetrier) sleepAndIncrementRetries() {
     time.Sleep(calculateJitter(time.Duration(r.waitTime) * time.Second))
 
-	r.waitTime *= r.exponent
+	r.waitTime = time.Duration(int64(r.waitTime) * r.exponent)
 
 	r.currentRetries++
 }
 
-/* Reset the current retries back to zero so that we can re-use this object elsewhere. */
+/* resetCurrentRetries resets the current retries back to zero so that we can re-use this object elsewhere. */
 func (r *MethodCallRetrier) resetCurrentRetries() {
 	r.currentRetries = 0
 }
 
-/* Reset the error list back to zero so that we can re-use this object elsewhere. */
+/* resetErrorList resets the error list back to zero so that we can re-use this object elsewhere. */
 func (r *MethodCallRetrier) resetErrorList() {
 	r.errorList = nil
 }
