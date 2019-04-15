@@ -1,10 +1,10 @@
 package MethodCallRetrier
 
-import "reflect"
-
 /* Represents an object capable of retrying a call on an object X times after receiving an error. */
 type Retrier interface {
-	ExecuteWithRetry(object interface{}, methodName string, args ...interface{}) ([]reflect.Value, []error)
+	ExecuteWithRetry(
+		object interface{}, methodName string, args ...interface{},
+	) (results []interface{}, errs []error, wasSuccesful bool)
 
-	ExecuteFuncWithRetry(function func() error) []error
+	ExecuteFuncWithRetry(function func() error) (errs []error, wasSuccessful bool)
 }
