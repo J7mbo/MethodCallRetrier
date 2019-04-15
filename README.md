@@ -17,48 +17,49 @@ be found [here](https://github.com/J7mbo/palmago-streetview).
 
 Installation
 -
-
-`go get github.com/j7mbo/MethodCallRetrier/v2`
+```bash
+go get github.com/j7mbo/MethodCallRetrier/v2
+```
 
 Usage
 -
 
 Initialise the object with some options:
 
-```
+```go
 MethodCallRetrier.New(waitTime time.Duration, maxRetries int64, exponent int64) 
 ```
 
 Call `ExecuteWithRetry` with your object and method you want to retry:
 
-```
+```go
 ExecuteWithRetry(
 	object interface{}, methodName string, args ...interface{},
-) ([]interface{}, []error)
+) (results []interface{}, errs []error, wasSuccessful bool)
 ```
 
 Alternatively, call `ExecuteFuncWithRetry` and pass in a function that returns `error` to retry.
 
-```
-ExecuteFuncWithRetry(func() error) []error
+```go
+ExecuteFuncWithRetry(func() error) (errs []error, wasSuccessful bool)
 ```
 
 You can use it as follows:
 
-```
-results, errs := retrier.ExecuteWithRetry(yourObject, "MethodToCall", "Arg1", "Arg2", "etc")
+```go
+results, errs, wasSuccessful := retrier.ExecuteWithRetry(yourObject, "MethodToCall", "Arg1", "Arg2", "etc")
 ```
 
 The results are an array of `interface{}` objects, (used for the dynamic method call), and an array of all errors.
 To use the results, you must typecast the result to the expected type. In the case of an `int64`, for example:
 
-```
+```go
 myInt := results[0].(int64)
 ```
 
 Or, to maintain type safety in userland, you can pass a function in instead and do all your retriable work in there:
 
-```
+```go
 var json string
 
 functionToRetry := func() error {
@@ -71,8 +72,8 @@ functionToRetry := func() error {
     return nil
 }
 
-if errs := retrier.ExecuteFuncWithRetry(funcToRetry); len(errs) > 0 {
-    /* Do something because we failed 3 times */
+if wasSuccessful, errs := retrier.ExecuteFuncWithRetry(funcToRetry); !wasSuccesful {
+    /* Do something with errs because we failed 3 times */
     return
 }
 

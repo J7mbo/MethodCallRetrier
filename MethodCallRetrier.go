@@ -48,7 +48,7 @@ ExecuteFuncWithRetry retries a function with a maximum number of retries and a w
 ExecuteWithRetry() but accepts a function to maintain type safety in userland instead and removes the requirement of a
 user type assertion.
 */
-func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error {
+func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) (errs []error, wasSuccessful bool) {
 	defer func() {
 		r.resetCurrentRetries()
 		r.resetErrorList()
@@ -63,7 +63,7 @@ func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error 
 			},
 		)
 
-		return r.errorList
+		return r.errorList, false
 	}
 
 	err := function()
@@ -76,13 +76,13 @@ func (r *MethodCallRetrier) ExecuteFuncWithRetry(function func() error) []error 
 		return r.ExecuteFuncWithRetry(function)
 	}
 
-	return r.errorList
+	return r.errorList, true
 }
 
 /* ExecuteWithRetry retries the call to object.methodName(...args) with a maximum number of retries and a wait time. */
 func (r *MethodCallRetrier) ExecuteWithRetry(
 	object interface{}, methodName string, args ...interface{},
-) ([]interface{}, []error) {
+) ([]interface{}, []error, bool) {
 	defer func() {
 		r.resetCurrentRetries()
 		r.resetErrorList()
@@ -93,13 +93,13 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 			r.errorList, &MaxRetriesError{methodName: methodName, waitTime: r.waitTime, maxRetries: r.maxRetries},
 		)
 
-		return nil, r.errorList
+		return nil, r.errorList, false
 	}
 
 	returnValues, err := r.callMethodOnObject(object, methodName, args)
 
 	if err != nil {
-		return nil, []error{err}
+		return nil, []error{err}, false
 	}
 
 	returnValueCount := len(returnValues)
@@ -127,10 +127,10 @@ func (r *MethodCallRetrier) ExecuteWithRetry(
 		results[i] = returnValues[i].Interface()
 	}
 
-	return results, nil
+	return results, r.errorList, true
 }
 
-/* callMethodOnObject calls a method dynamically on an object with arguments. */
+/* callMethodOnObject calls a method dynamically on an object with arguments - error returned here is our fault. */
 func (r *MethodCallRetrier) callMethodOnObject(
 	object interface{},
 	methodName string,
