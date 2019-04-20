@@ -177,7 +177,7 @@ func objectIsAPointer(object interface{}) bool {
 
 /* sleepAndIncrementRetries sleeps for the given wait time and increments the retry count by 1. */
 func (r *MethodCallRetrier) sleepAndIncrementRetries() {
-    time.Sleep(calculateJitter(time.Duration(r.waitTime) * time.Second))
+    time.Sleep(calculateJitter(r.waitTime))
 
 	r.waitTime = time.Duration(int64(r.waitTime) * r.exponent)
 
